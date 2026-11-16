@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App Receitas</title>
+<style>
+*{box-sizing:border-box;font-family:Arial,sans-serif}
+body{margin:0;background:#fff7ed;color:#333}
+header{background:#ea580c;color:#fff;padding:20px;text-align:center}
+header h1{margin:0;font-size:28px}
+header p{margin:5px 0 0;opacity:.9}
+.search{padding:15px;display:flex;gap:10px;position:sticky;top:0;background:#fff7ed;z-index:2}
+.search input{flex:1;padding:12px;border-radius:20px;border:1px solid #ddd;font-size:16px}
+.search button{background:#ea580c;color:#fff;border:0;padding:0 18px;border-radius:20px;font-weight:bold}
+.filters{display:flex;gap:8px;padding:0 15px 10px;overflow-x:auto}
+.filters button{border:1px solid #ea580c;background:#fff;color:#ea580c;padding:8px 14px;border-radius:20px;white-space:nowrap}
+.filters button.ativo{background:#ea580c;color:#fff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:15px}
+.card{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.1);cursor:pointer}
+.card img{width:100%;height:110px;object-fit:cover}
+.card div{padding:10px}
+.card h3{margin:0;font-size:15px}
+.card p{margin:5px 0 0;font-size:12px;color:#888}
+.add{position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:50%;background:#ea580c;color:#fff;font-size:30px;border:0;box-shadow:0 4px 15px rgba(0,0,0,.3)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center}
+.modal.aberto{display:flex}
+.box{background:#fff;width:100%;max-height:90%;overflow:auto;border-radius:20px 20px 0 0;padding:20px}
+.box img{width:100%;height:200px;object-fit:cover;border-radius:12px}
+.box input,.box select,.box textarea{width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:10px;font-size:15px}
+.btn{background:#ea580c;color:#fff;border:0;padding:13px;border-radius:12px;width:100%;font-weight:bold;font-size:16px}
+.fechar{float:right;background:#eee;border:0;padding:8px 12px;border-radius:50%}
+.del{background:#fee2e2;color:#dc2626;border:0;padding:10px;border-radius:10px;width:100%;margin-top:10px}
+@media(min-width:600px){.grid{grid-template-columns:1fr 1fr 1fr 1fr}.box{max-width:500px;border-radius:20px;margin:20px}}
+</style>
+</head>
+<body>
+<header><h1>🍳 Minhas Receitas</h1><p>Todo completo, do seu jeito!</p></header>
+<div class="search"><input id="busca" placeholder="Pesquisar... ex: bolo" oninput="mostrar()"><button onclick="abrirForm()">+ Nova</button></div>
+<div class="filters" id="filtros"></div>
+<div class="grid" id="lista"></div>
+<button class="add" onclick="abrirForm()">+</button>
+
+<div class="modal" id="modalVer"><div class="box"><button class="fechar" onclick="fechar()">X</button><div id="detalhe"></div></div></div>
+<div class="modal" id="modalForm"><div class="box"><button class="fechar" onclick="fechar()">X</button><h2>Nova Receita</h2><input id="f-nome" placeholder="Nome da receita"><select id="f-cat"><option>Doce</option><option>Salgada</option><option>Bebida</option><option>Lanche</option></select><input id="f-tempo" placeholder="Tempo ex: 30 min"><input id="f-foto" placeholder="Link da foto (opcional)"><textarea id="f-ing" rows="4" placeholder="Ingredientes, um por linha"></textarea><textarea id="f-modo" rows="5" placeholder="Modo de preparo"></textarea><button class="btn" onclick="salvar()">Salvar Receita ✅</button></div></div>
+
+<script>
+let padrao=[
+{nome:"Bolo de Chocolate",cat:"Doce",tempo:"45 min",foto:"https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=600",ing:"2 xícaras de farinha\n1 xícara de chocolate em pó\n1 xícara de açúcar\n3 ovos\n1 xícara de leite",modo:"1. Misture tudo\n2. Asse a 180° por 40 min\n3. Cubra com chocolate"},
+{nome:"Panqueca",cat:"Lanche",tempo:"20 min",foto:"https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=600",ing:"1 xícara de farinha\n1 ovo\n1 xícara de leite\n1 pitada de sal",modo:"1. Bata tudo\n2. Frite na frigideira\n3. Sirva com mel"},
+{nome:"Salada de Frutas",cat:"Doce",tempo:"10 min",foto:"https://images.unsplash.com/photo-1564093497595-593b96d80180?w=600",ing:"1 banana\n1 maçã\n1 laranja\nMel a gosto",modo:"1. Corte as frutas\n2. Misture e coloque mel\n3. Sirva gelada"},
+{nome:"Macarrão Alho e Óleo",cat:"Salgada",tempo:"15 min",foto:"https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?w=600",ing:"250g macarrão\n4 dentes de alho\nAzeite\nSal",modo:"1. Cozinhe o macarrão\n2. Frite o alho no azeite\n3. Misture tudo"},
+{nome:"Suco de Laranja",cat:"Bebida",tempo:"5 min",foto:"https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=600",ing:"4 laranjas\nGelo",modo:"1. Esprema as laranjas\n2. Coloque gelo e sirva"},
+{nome:"Tapioca de Queijo",cat:"Lanche",tempo:"10 min",foto:"https://images.unsplash.com/photo-1533777857889-4be7c70b33f7?w=600",ing:"Tapioca\nQueijo coalho",modo:"1. Coloque a tapioca na frigideira\n2. Coloque o queijo\n3. Dobre e sirva"}
+];
+let receitas=JSON.parse(localStorage.getItem("receitas")||"null")||padrao;
+let filtroAtual="Tudo";
+let cats=["Tudo","Doce","Salgada","Bebida","Lanche"];
+function mostrar(){
+  let b=document.getElementById("busca").value.toLowerCase();
+  document.getElementById("filtros").innerHTML=cats.map(c=>`<button class="${c==filtroAtual?'ativo':''}" onclick="filtrar('${c}')">${c}</button>`).join("");
+  let lista=receitas.filter(r=>(filtroAtual=="Tudo"||r.cat==filtroAtual)&&r.nome.toLowerCase().includes(b));
+  document.getElementById("lista").innerHTML=lista.map((r,i)=>`<div class="card" onclick="ver(${receitas.indexOf(r)})"><img src="${r.foto}"><div><h3>${r.nome}</h3><p>${r.cat} • ${r.tempo}</p></div></div>`).join("")||"<p style='padding:20px'>Nenhuma receita encontrada 😢</p>";
+}
+function filtrar(c){filtroAtual=c;mostrar()}
+function ver(i){
+  let r=receitas[i];
+  document.getElementById("detalhe").innerHTML=`<img src="${r.foto}"><h2>${r.nome}</h2><p>📂 ${r.cat} • ⏰ ${r.tempo}</p><h3>Ingredientes</h3><p>${r.ing.replace(/\n/g,"<br>")}</p><h3>Modo de Preparo</h3><p>${r.modo.replace(/\n/g,"<br>")}</p><button class="del" onclick="apagar(${i})">🗑️ Apagar receita</button>`;
+  document.getElementById("modalVer").classList.add("aberto");
+}
+function apagar(i){if(confirm("Apagar essa receita?")){receitas.splice(i,1);localStorage.setItem("receitas",JSON.stringify(receitas));fechar();mostrar()}}
+function abrirForm(){document.getElementById("modalForm").classList.add("aberto")}
+function fechar(){document.querySelectorAll(".modal").forEach(m=>m.classList.remove("aberto"))}
+function salvar(){
+  let n=document.getElementById("f-nome").value;
+  if(!n) return alert("Coloca o nome da receita!");
+  receitas.unshift({nome:n,cat:document.getElementById("f-cat").value,tempo:document.getElementById("f-tempo").value||"15 min",foto:document.getElementById("f-foto").value||"https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600",ing:document.getElementById("f-ing").value||"A gosto",modo:document.getElementById("f-modo").value||"Prepare com carinho"});
+  localStorage.setItem("receitas",JSON.stringify(receitas));
+  fechar();mostrar();alert("Receita salva! 🎉");
+}
+mostrar();
+</script>
+</body>
+</html>
